@@ -1,4 +1,4 @@
-import { BarChart3, TrendingUp, CalendarDays, Award } from 'lucide-react';
+import { ChartBar as BarChart3, TrendingUp, CalendarDays, Award } from 'lucide-react';
 import { Screen, ScreenHeader, Card, ProgressBar } from '@/components/ui';
 import { getWordsByLevel, getAppConfig, getLevelByCode } from '@/data/vocabularyRepository';
 import type { OnboardingState } from '@/types';
