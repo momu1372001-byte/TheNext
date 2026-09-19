@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Flame, ChevronLeft, Lock, Trophy, ArrowLeft, Play, Target, Zap, CheckCircle2, Sparkles } from 'lucide-react';
+import { BookOpen, Flame, ChevronLeft, Lock, Trophy, ArrowLeft, Play, Target, CheckCircle2, Sparkles } from 'lucide-react';
 import {
   Screen,
   ScreenHeader,

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronLeft, Check, X, Trophy, Volume2, Zap, Flame, RotateCcw, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, Check, X, Trophy, Volume2, Zap, Flame, ArrowLeft } from 'lucide-react';
 import { Screen, ProgressBar, Button } from '@/components/ui';
 import { getWordById, getAllWords } from '@/data/vocabularyRepository';
 import {
@@ -38,7 +38,8 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function pickDistractors(pool: string[], correct: string, count: number): string[] {
-  return shuffle(pool.filter((w) => w !== correct)).slice(0, count);
+  const filtered = pool.filter((w: string) => w !== correct);
+  return shuffle(filtered).slice(0, count);
 }
 
 const TYPE_LABELS: Record<ExerciseType, string> = {
@@ -155,16 +156,6 @@ export function DailySessionScreen({ level, dailyGoal, onBack }: DailySessionScr
       setAnswered(false);
     }
   }, [currentIdx, exercises.length]);
-
-  const handleRestart = useCallback(() => {
-    setExercises(buildExercisesForWords(sessionWords));
-    setCurrentIdx(0);
-    setSelected(null);
-    setAnswered(false);
-    setCorrectCount(0);
-    setWrongWords([]);
-    setPhase('practice');
-  }, [sessionWords]);
 
   if (sessionWords.length === 0 || !current) {
     return (
