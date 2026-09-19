@@ -70,7 +70,7 @@ export function getLessonProgress(lessonId: string): LessonProgress | undefined 
   return currentState.lessons[lessonId];
 }
 
-export function getCompletedLessonsForLevel(level: LevelCode, lessonIds: string[]): number {
+export function getCompletedLessonsForLevel(_level: LevelCode, lessonIds: string[]): number {
   return lessonIds.filter((id) => currentState.lessons[id]?.completed).length;
 }
 
