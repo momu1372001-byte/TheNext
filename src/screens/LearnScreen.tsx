@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Flame, ChevronLeft, Lock, Trophy, ArrowLeft } from 'lucide-react';
+import { BookOpen, Flame, ChevronLeft, Lock, Trophy, ArrowLeft, Play } from 'lucide-react';
 import {
   Screen,
   ScreenHeader,
@@ -18,26 +18,26 @@ import {
   getCategoryById,
   getLevelByCode,
 } from '@/data/vocabularyRepository';
+import { isLessonCompleted, getWordStatus } from '@/data/progressStore';
 import type { Lesson, OnboardingState } from '@/types';
+import LessonPracticeScreen from './LessonPracticeScreen';
 
 type LearnScreenProps = {
   profile: OnboardingState;
 };
 
-/**
- * Determines the status of each lesson in the path.
- * The first lesson is active, the rest are locked until the previous is completed.
- * (Learning progress is not yet persisted — all lessons start as locked/active.)
- */
 function getLessonStatuses(lessons: Lesson[]): LessonStatus[] {
-  return lessons.map((_, i) => {
+  return lessons.map((lesson, i) => {
+    if (isLessonCompleted(lesson.id)) return 'completed';
+    // First lesson is always active; others are active if the previous is completed
     if (i === 0) return 'active';
-    return 'locked';
+    return isLessonCompleted(lessons[i - 1].id) ? 'active' : 'locked';
   });
 }
 
 export function LearnScreen({ profile }: LearnScreenProps) {
   const [openLessonId, setOpenLessonId] = useState<string | null>(null);
+  const [practicing, setPracticing] = useState(false);
 
   const dailyGoal = profile.dailyGoal;
   const learnedToday = 0;
@@ -47,7 +47,17 @@ export function LearnScreen({ profile }: LearnScreenProps) {
   const completedCount = statuses.filter((s) => s === 'completed').length;
   const overallProgress = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
 
-  // --- Lesson detail view (unchanged behavior) ---
+  // --- Practice mode ---
+  if (openLessonId && practicing) {
+    return (
+      <LessonPracticeScreen
+        lessonId={openLessonId}
+        onBack={() => setPracticing(false)}
+      />
+    );
+  }
+
+  // --- Lesson detail view ---
   if (openLessonId) {
     const lesson = getLessonById(openLessonId);
     if (!lesson) {
@@ -56,6 +66,7 @@ export function LearnScreen({ profile }: LearnScreenProps) {
     }
     const category = getCategoryById(lesson.category);
     const lessonWords = getWordsByLesson(lesson.id);
+    const completed = isLessonCompleted(lesson.id);
 
     return (
       <Screen>
@@ -67,7 +78,7 @@ export function LearnScreen({ profile }: LearnScreenProps) {
           >
             <ChevronLeft size={18} className="rotate-180" />
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-lg font-bold text-text-primary truncate">{lesson.titleAr}</h1>
             <p className="text-2xs text-text-muted truncate ltr">{lesson.titleEn}</p>
           </div>
@@ -79,13 +90,33 @@ export function LearnScreen({ profile }: LearnScreenProps) {
             <span>{category?.nameAr ?? ''}</span>
             <span>·</span>
             <span className="ltr">{lessonWords.length} كلمات</span>
+            {completed && (
+              <>
+                <span>·</span>
+                <span className="text-success-400">مكتمل</span>
+              </>
+            )}
           </div>
         </div>
 
+        {/* Start practice button */}
+        <div className="px-5 pb-4">
+          <Button
+            fullWidth
+            size="lg"
+            icon={<Play size={20} fill="currentColor" />}
+            onClick={() => setPracticing(true)}
+          >
+            {completed ? 'إعادة التمرين' : 'ابدأ التمرين'}
+          </Button>
+        </div>
+
+        {/* Word list */}
         <div className="flex flex-col gap-3 px-5 pb-8">
-          {lessonWords.map((w, i) => (
-            <WordCard key={w.id} word={w} index={i} />
-          ))}
+          {lessonWords.map((w, i) => {
+            const status = getWordStatus(w.id);
+            return <WordCard key={w.id} word={w} index={i} status={status} />;
+          })}
         </div>
       </Screen>
     );
@@ -94,7 +125,6 @@ export function LearnScreen({ profile }: LearnScreenProps) {
   // --- Path / map view ---
   return (
     <Screen>
-      {/* Header with unit name + overall progress */}
       <ScreenHeader
         titleAr="تعلّم"
         subtitleAr={level ? `${level.nameAr} · ${level.code}` : 'اختر مستواك أولاً'}
