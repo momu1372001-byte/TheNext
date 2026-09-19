@@ -1,6 +1,6 @@
 import { BarChart3, TrendingUp, CalendarDays, Award } from 'lucide-react';
 import { Screen, ScreenHeader, Card, ProgressBar } from '@/components/ui';
-import { getWordCount, getWordsByLevel, getAppConfig, getLevelByCode } from '@/data/vocabularyRepository';
+import { getWordsByLevel, getAppConfig, getLevelByCode } from '@/data/vocabularyRepository';
 import type { OnboardingState } from '@/types';
 
 type ProgressScreenProps = {
@@ -8,7 +8,6 @@ type ProgressScreenProps = {
 };
 
 export function ProgressScreen({ profile }: ProgressScreenProps) {
-  const totalAvailable = getWordCount();
   const targetTotal = getAppConfig().totalWords;
   const levelWordCount = profile.level ? getWordsByLevel(profile.level).length : 0;
   const levelMeta = profile.level ? getLevelByCode(profile.level) : undefined;
@@ -43,7 +42,7 @@ export function ProgressScreen({ profile }: ProgressScreenProps) {
 
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-3">
-          {stats.map((s, i) => (
+          {stats.map((s) => (
             <Card
               key={s.labelAr}
               className="p-4 flex flex-col items-center gap-2 text-center animate-fade-up"
