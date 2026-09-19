@@ -1,23 +1,136 @@
-import { ChartBar as BarChart3, TrendingUp, CalendarDays, Award } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChartBar as BarChart3, Flame, Zap, BookOpen, CircleCheck as CheckCircle2, Loader as Loader2 } from 'lucide-react';
 import { Screen, ScreenHeader, Card, ProgressBar } from '@/components/ui';
-import { getWordsByLevel, getAppConfig, getLevelByCode } from '@/data/vocabularyRepository';
+import { getProgressSummary, subscribe, type ProgressSummary } from '@/data/progressStore';
+import { getLevelByCode, getAppConfig } from '@/data/vocabularyRepository';
 import type { OnboardingState } from '@/types';
+import type { LevelCode } from '@/types';
 
 type ProgressScreenProps = {
   profile: OnboardingState;
 };
 
-export function ProgressScreen({ profile }: ProgressScreenProps) {
-  const targetTotal = getAppConfig().totalWords;
-  const levelWordCount = profile.level ? getWordsByLevel(profile.level).length : 0;
-  const levelMeta = profile.level ? getLevelByCode(profile.level) : undefined;
-  const learnedTotal = 0;
+function useSummary(dailyGoal: number) {
+  const [summary, setSummary] = useState<ProgressSummary>(() => getProgressSummary(dailyGoal));
 
-  const stats = [
-    { icon: <TrendingUp size={18} />, labelAr: 'كلمات تعلّمتها', value: String(learnedTotal), color: 'text-primary-500' },
-    { icon: <CalendarDays size={18} />, labelAr: 'أيام متتالية', value: '0', color: 'text-success-400' },
-    { icon: <Award size={18} />, labelAr: 'كلمات مستواك', value: String(levelWordCount), color: 'text-accent-400' },
-  ];
+  useEffect(() => {
+    setSummary(getProgressSummary(dailyGoal));
+    return subscribe(() => setSummary(getProgressSummary(dailyGoal)));
+  }, [dailyGoal]);
+
+  return summary;
+}
+
+function StatCard({
+  icon,
+  value,
+  label,
+  accent,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+  accent: string;
+}) {
+  return (
+    <Card className="p-4 flex flex-col items-center gap-2 text-center animate-fade-up">
+      <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${accent}`}>
+        {icon}
+      </span>
+      <span className="text-2xl font-bold text-text-primary ltr tabular-nums">{value}</span>
+      <span className="text-2xs text-text-muted leading-tight">{label}</span>
+    </Card>
+  );
+}
+
+function WeeklyActivity({ activity }: { activity: ProgressSummary['weeklyActivity'] }) {
+  const maxCount = Math.max(1, ...activity.map((d) => d.count));
+  const today = activity[activity.length - 1]?.date;
+
+  return (
+    <Card className="p-5 animate-fade-up">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-semibold text-text-primary">نشاط هذا الأسبوع</p>
+        <span className="text-2xs text-text-muted">آخر ٧ أيام</span>
+      </div>
+      <div className="flex items-end justify-between gap-2 h-28">
+        {activity.map((d) => {
+          const isToday = d.date === today;
+          const heightPct = Math.round((d.count / maxCount) * 100);
+          return (
+            <div key={d.date} className="flex flex-1 flex-col items-center gap-1.5 h-full justify-end">
+              <div className="w-full flex-1 flex items-end">
+                <div
+                  className={`w-full rounded-md transition-all duration-500 ${
+                    isToday ? 'bg-primary-500' : d.count > 0 ? 'bg-primary-500/40' : 'bg-white/5'
+                  }`}
+                  style={{ height: `${d.count > 0 ? Math.max(8, heightPct) : 4}%` }}
+                />
+              </div>
+              <span
+                className={`text-2xs ${isToday ? 'text-primary-400 font-semibold' : 'text-text-muted'}`}
+              >
+                {d.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function LevelRow({
+  code,
+  learned,
+  total,
+}: {
+  code: LevelCode;
+  learned: number;
+  total: number;
+}) {
+  const level = getLevelByCode(code);
+  const pct = total > 0 ? Math.round((learned / total) * 100) : 0;
+  const fillColor = level?.color ?? '#F59E0B';
+
+  return (
+    <div className="flex flex-col gap-2 py-2.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="flex h-7 w-9 items-center justify-center rounded-md text-2xs font-bold ltr"
+            style={{ backgroundColor: `${fillColor}22`, color: fillColor }}
+          >
+            {code}
+          </span>
+          <span className="text-sm font-medium text-text-secondary">{level?.nameAr ?? code}</span>
+        </div>
+        <span className="text-2xs text-text-muted ltr tabular-nums">
+          {learned} / {total}
+        </span>
+      </div>
+      <div
+        className="w-full overflow-hidden rounded-pill bg-white/8"
+        style={{ height: 6 }}
+        role="progressbar"
+        aria-valuenow={learned}
+        aria-valuemax={total}
+        aria-valuemin={0}
+      >
+        <div
+          className="h-full rounded-pill transition-[width] duration-700 ease-out"
+          style={{ width: `${pct}%`, backgroundColor: fillColor }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function ProgressScreen({ profile }: ProgressScreenProps) {
+  const summary = useSummary(profile.dailyGoal || 10);
+  const targetTotal = getAppConfig().totalWords;
+  const overallPct = Math.round((summary.totalLearned / targetTotal) * 100);
+  const goalPct = Math.min(100, Math.round((summary.learnedToday / summary.dailyGoal) * 100));
 
   return (
     <Screen>
@@ -28,43 +141,108 @@ export function ProgressScreen({ profile }: ProgressScreenProps) {
       />
 
       <div className="flex flex-col gap-4 px-5 pb-8">
-        {/* Overall progress */}
+        {/* Overall progress hero */}
         <Card raised className="p-5 animate-fade-up">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-text-primary">إجمالي التقدّم</span>
-            <span className="text-sm text-text-secondary ltr">{learnedTotal} / {targetTotal}</span>
+            <div>
+              <p className="text-sm font-semibold text-text-primary">إجمالي التقدّم</p>
+              <p className="text-2xs text-text-muted mt-0.5">
+                من أصل {targetTotal.toLocaleString('en-US')} كلمة
+              </p>
+            </div>
+            <div className="text-left">
+              <span className="text-2xl font-bold text-primary-400 ltr tabular-nums block leading-none">
+                {overallPct}%
+              </span>
+            </div>
           </div>
-          <ProgressBar value={learnedTotal} max={targetTotal} />
-          <p className="text-2xs text-text-muted mt-2">
-            المستوى الحالي: {levelMeta?.nameAr ?? profile.level ?? '—'}
-          </p>
+          <ProgressBar value={summary.totalLearned} max={targetTotal} height={10} />
+          <div className="flex items-center justify-between mt-3">
+            <span className="text-2xs text-text-muted ltr tabular-nums">
+              {summary.totalLearned.toLocaleString('en-US')} تعلّمتها
+            </span>
+            <span className="text-2xs text-text-muted ltr tabular-nums">
+              {(targetTotal - summary.totalLearned).toLocaleString('en-US')} متبقّية
+            </span>
+          </div>
         </Card>
 
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-3">
-          {stats.map((s) => (
-            <Card
-              key={s.labelAr}
-              className="p-4 flex flex-col items-center gap-2 text-center animate-fade-up"
-            >
-              <span className={s.color}>{s.icon}</span>
-              <span className="text-xl font-bold text-text-primary ltr">{s.value}</span>
-              <span className="text-2xs text-text-muted leading-tight">{s.labelAr}</span>
-            </Card>
-          ))}
+          <StatCard
+            icon={<BookOpen size={18} />}
+            value={summary.totalLearned.toLocaleString('en-US')}
+            label="كلمات تعلّمتها"
+            accent="bg-primary-500/15 text-primary-400"
+          />
+          <StatCard
+            icon={<CheckCircle2 size={18} />}
+            value={summary.masteredCount.toLocaleString('en-US')}
+            label="كلمات أتقنتها"
+            accent="bg-success-500/15 text-success-400"
+          />
+          <StatCard
+            icon={<Loader2 size={18} />}
+            value={summary.inProgressCount.toLocaleString('en-US')}
+            label="قيد التعلّم"
+            accent="bg-accent-500/15 text-accent-400"
+          />
         </div>
 
-        {/* Weekly placeholder */}
-        <Card className="p-5 animate-fade-up" >
-          <p className="text-sm font-semibold text-text-primary mb-3">نشاط هذا الأسبوع</p>
-          <div className="flex items-end justify-between gap-2 h-24">
-            {['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'].map((day, i) => (
-              <div key={day} className="flex flex-1 flex-col items-center gap-1.5">
-                <div className="w-full rounded-md bg-white/5" style={{ height: `${10 + (i === 6 ? 30 : 0)}%` }}>
-                  <div className="h-full w-full rounded-md bg-primary-500/20" />
-                </div>
-                <span className="text-2xs text-text-muted">{day}</span>
-              </div>
+        {/* Streak + XP row */}
+        <div className="grid grid-cols-2 gap-3">
+          <Card raised className="p-4 flex items-center gap-3 animate-fade-up">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-500/15 text-warning-400">
+              <Flame size={22} />
+            </span>
+            <div>
+              <span className="text-2xl font-bold text-text-primary ltr block leading-none">
+                {summary.streak}
+              </span>
+              <span className="text-2xs text-text-muted">أيام متتالية</span>
+            </div>
+          </Card>
+          <Card raised className="p-4 flex items-center gap-3 animate-fade-up">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/15 text-primary-400">
+              <Zap size={22} />
+            </span>
+            <div>
+              <span className="text-2xl font-bold text-text-primary ltr block leading-none">
+                {summary.xp.toLocaleString('en-US')}
+              </span>
+              <span className="text-2xs text-text-muted">نقطة خبرة</span>
+            </div>
+          </Card>
+        </div>
+
+        {/* Daily goal */}
+        <Card className="p-5 animate-fade-up">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-text-primary">هدف اليوم</p>
+            <span className="text-2xs text-text-muted ltr tabular-nums">
+              {summary.learnedToday} / {summary.dailyGoal} كلمة
+            </span>
+          </div>
+          <ProgressBar value={summary.learnedToday} max={summary.dailyGoal} height={10} />
+          <p className="text-2xs mt-2 font-medium" style={{ color: goalPct >= 100 ? '#34D399' : '#6B7A99' }}>
+            {goalPct >= 100 ? '✓ تم تحقيق هدف اليوم!' : `${summary.dailyGoal - summary.learnedToday} كلمات متبقّية`}
+          </p>
+        </Card>
+
+        {/* Weekly activity */}
+        <WeeklyActivity activity={summary.weeklyActivity} />
+
+        {/* Per-level breakdown */}
+        <Card className="p-5 animate-fade-up">
+          <p className="text-sm font-semibold text-text-primary mb-2">التقدّم حسب المستوى</p>
+          <div className="flex flex-col divide-y divide-white/5">
+            {summary.perLevel.map((lvl) => (
+              <LevelRow
+                key={lvl.code}
+                code={lvl.code}
+                learned={lvl.learned}
+                total={lvl.total}
+              />
             ))}
           </div>
         </Card>
