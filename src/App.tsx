@@ -7,6 +7,7 @@ import { ReviewScreen } from '@/screens/ReviewScreen';
 import { ProgressScreen } from '@/screens/ProgressScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
 import type { OnboardingState, TabKey } from '@/types';
+import { loadProfile, saveProfile, clearProfile } from '@/data/profileStore';
 
 type Phase = 'splash' | 'onboarding' | 'app';
 
@@ -21,6 +22,15 @@ function App() {
   const [profile, setProfile] = useState<OnboardingState>(INITIAL_PROFILE);
   const [tab, setTab] = useState<TabKey>('learn');
 
+  // Load saved profile on mount — returning users skip onboarding.
+  useEffect(() => {
+    const saved = loadProfile();
+    if (saved.completed) {
+      setProfile(saved);
+      setPhase('app');
+    }
+  }, []);
+
   // Auto-advance splash after a short delay even if user doesn't tap.
   useEffect(() => {
     if (phase !== 'splash') return;
@@ -29,12 +39,23 @@ function App() {
   }, [phase]);
 
   const handleOnboardingComplete = (level: OnboardingState['level'], dailyGoal: number) => {
-    setProfile({ level, dailyGoal, completed: true });
+    const next = { level, dailyGoal, completed: true };
+    saveProfile(next);
+    setProfile(next);
     setPhase('app');
     setTab('learn');
   };
 
+  const handleUpdateProfile = (partial: Partial<OnboardingState>) => {
+    setProfile((prev) => {
+      const next = { ...prev, ...partial };
+      saveProfile(next);
+      return next;
+    });
+  };
+
   const handleResetOnboarding = () => {
+    clearProfile();
     setProfile(INITIAL_PROFILE);
     setPhase('onboarding');
   };
@@ -48,7 +69,13 @@ function App() {
       case 'progress':
         return <ProgressScreen profile={profile} />;
       case 'profile':
-        return <ProfileScreen profile={profile} onResetOnboarding={handleResetOnboarding} />;
+        return (
+          <ProfileScreen
+            profile={profile}
+            onUpdateProfile={handleUpdateProfile}
+            onResetOnboarding={handleResetOnboarding}
+          />
+        );
       default:
         return null;
     }
