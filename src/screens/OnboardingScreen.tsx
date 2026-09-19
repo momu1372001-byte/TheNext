@@ -42,7 +42,7 @@ export function OnboardingScreen({ onComplete }: OnboardingProps) {
 
       {/* Level step */}
       {step === 'level' && (
-        <div className="flex flex-1 flex-col px-5 pt-4 overflow-y-auto scrollbar-none animate-fade-in">
+        <div className="flex flex-1 flex-col px-5 pt-4 overflow-y-auto no-scrollbar animate-fade-in">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/15 text-primary-500">
               <GraduationCap size={22} />
@@ -100,7 +100,7 @@ export function OnboardingScreen({ onComplete }: OnboardingProps) {
 
       {/* Goal step */}
       {step === 'goal' && (
-        <div className="flex flex-1 flex-col px-5 pt-4 overflow-y-auto scrollbar-none animate-fade-in">
+        <div className="flex flex-1 flex-col px-5 pt-4 overflow-y-auto no-scrollbar animate-fade-in">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/15 text-primary-500">
               <Target size={22} />
