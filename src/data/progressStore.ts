@@ -150,6 +150,54 @@ export function markLessonComplete(lessonId: string, score: number, wordIds: str
   notify();
 }
 
+export type ReviewEntry = {
+  wordId: string;
+  wrongCount: number;
+  correctCount: number;
+  status: WordStatus;
+  weight: number;
+};
+
+/**
+ * Returns words that are due for review, sorted by priority:
+ * - Words with wrong answers appear first (more wrongs = higher priority)
+ * - Words still in "learning" status are next
+ * - "reviewed" words with zero wrongs are excluded (they're mastered)
+ */
+export function getReviewWords(): ReviewEntry[] {
+  const entries: ReviewEntry[] = [];
+
+  for (const [wordId, progress] of Object.entries(currentState.words)) {
+    const hasWrong = progress.wrongCount > 0;
+    const isLearning = progress.status === 'learning';
+
+    if (!hasWrong && !isLearning) continue;
+
+    // Weight: words with more wrongs appear more frequently.
+    // Each wrong answer doubles the weight (exponential), so a word
+    // answered wrong 3x is 8x more likely to appear than one wrong 1x.
+    const weight = Math.max(1, (progress.wrongCount + 1) * (isLearning ? 2 : 1));
+
+    entries.push({
+      wordId,
+      wrongCount: progress.wrongCount,
+      correctCount: progress.correctCount,
+      status: progress.status,
+      weight,
+    });
+  }
+
+  // Sort by wrongCount desc, then by status (learning before reviewed)
+  entries.sort((a, b) => {
+    if (b.wrongCount !== a.wrongCount) return b.wrongCount - a.wrongCount;
+    if (a.status === 'learning' && b.status !== 'learning') return -1;
+    if (b.status === 'learning' && a.status !== 'learning') return 1;
+    return 0;
+  });
+
+  return entries;
+}
+
 export function resetProgress(): void {
   currentState = { ...INITIAL_STATE };
   save(currentState);
