@@ -1,4 +1,5 @@
-import type { LevelCode } from '@/types';
+import type { LevelCode, Word } from '@/types';
+import { getWordsByLevel, getAllLevels } from '@/data/vocabularyRepository';
 
 const STORAGE_KEY = 'words-app-progress-v1';
 
@@ -16,12 +17,17 @@ export type WordProgress = {
   wrongCount: number;
 };
 
+/** Map of YYYY-MM-DD -> count of words learned that day. */
+export type ActivityLog = Record<string, number>;
+
 export type ProgressState = {
   lessons: Record<string, LessonProgress>;
   learnedWordIds: string[];
   streak: number;
   lastActiveDate: string | null;
   words: Record<string, WordProgress>;
+  xp: number;
+  activityLog: ActivityLog;
 };
 
 const INITIAL_STATE: ProgressState = {
@@ -30,6 +36,8 @@ const INITIAL_STATE: ProgressState = {
   streak: 0,
   lastActiveDate: null,
   words: {},
+  xp: 0,
+  activityLog: {},
 };
 
 function load(): ProgressState {
@@ -43,6 +51,8 @@ function load(): ProgressState {
       streak: parsed.streak ?? 0,
       lastActiveDate: parsed.lastActiveDate ?? null,
       words: parsed.words ?? {},
+      xp: parsed.xp ?? 0,
+      activityLog: parsed.activityLog ?? {},
     };
   } catch {
     return { ...INITIAL_STATE };
@@ -97,6 +107,12 @@ export function getWordProgress(wordId: string): WordProgress | undefined {
   return currentState.words[wordId];
 }
 
+function bumpActivity(state: ProgressState, today: string, newlyLearned: number): ActivityLog {
+  if (newlyLearned <= 0) return state.activityLog;
+  const prev = state.activityLog[today] ?? 0;
+  return { ...state.activityLog, [today]: prev + newlyLearned };
+}
+
 export function recordWordAnswer(wordId: string, correct: boolean): void {
   const existing = currentState.words[wordId];
   const correctCount = (existing?.correctCount ?? 0) + (correct ? 1 : 0);
@@ -114,6 +130,7 @@ export function recordWordAnswer(wordId: string, correct: boolean): void {
       ...currentState.words,
       [wordId]: { status, correctCount, wrongCount },
     },
+    xp: currentState.xp + (correct ? 5 : 1),
   };
   save(currentState);
   notify();
@@ -123,8 +140,9 @@ export function markLessonComplete(lessonId: string, score: number, wordIds: str
   const existing = currentState.lessons[lessonId];
   const today = new Date().toISOString().slice(0, 10);
 
-  const newLearned = new Set(currentState.learnedWordIds);
-  wordIds.forEach((id) => newLearned.add(id));
+  const prevLearned = new Set(currentState.learnedWordIds);
+  wordIds.forEach((id) => prevLearned.add(id));
+  const newlyLearned = prevLearned.size - currentState.learnedWordIds.length;
 
   const streak = currentState.lastActiveDate === today
     ? currentState.streak
@@ -142,9 +160,11 @@ export function markLessonComplete(lessonId: string, score: number, wordIds: str
         completedAt: today,
       },
     },
-    learnedWordIds: [...newLearned],
+    learnedWordIds: [...prevLearned],
     streak,
     lastActiveDate: today,
+    xp: currentState.xp + 25 + Math.round(score / 4),
+    activityLog: bumpActivity(currentState, today, newlyLearned),
   };
   save(currentState);
   notify();
@@ -202,4 +222,76 @@ export function resetProgress(): void {
   currentState = { ...INITIAL_STATE };
   save(currentState);
   notify();
+}
+
+/* ------------------------------------------------------------------ */
+/* Derived selectors (read-only, used by the Progress screen)
+/* ------------------------------------------------------------------ */
+
+export type ProgressSummary = {
+  totalLearned: number;
+  masteredCount: number;
+  inProgressCount: number;
+  streak: number;
+  xp: number;
+  dailyGoal: number;
+  learnedToday: number;
+  perLevel: Array<{ code: LevelCode; learned: number; total: number }>;
+  weeklyActivity: Array<{ date: string; label: string; count: number }>;
+};
+
+const ARABIC_DAY_LABELS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+function dateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function getProgressSummary(dailyGoal: number): ProgressSummary {
+  const state = currentState;
+  const today = dateKey(new Date());
+
+  const learnedSet = new Set(state.learnedWordIds);
+  let masteredCount = 0;
+  let inProgressCount = 0;
+
+  for (const id of learnedSet) {
+    const p = state.words[id];
+    if (p?.status === 'reviewed') masteredCount++;
+    else inProgressCount++;
+  }
+
+  const allLevels = getAllLevels();
+  const perLevel = allLevels.map((lvl) => {
+    const levelWords = getWordsByLevel(lvl.code);
+    const learned = levelWords.filter((w: Word) => learnedSet.has(w.id)).length;
+    return { code: lvl.code, learned, total: levelWords.length };
+  });
+
+  // Last 7 days (oldest -> newest), labeled with Arabic weekday names.
+  const weeklyActivity: Array<{ date: string; label: string; count: number }> = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = dateKey(d);
+    weeklyActivity.push({
+      date: key,
+      label: ARABIC_DAY_LABELS[d.getDay()],
+      count: state.activityLog[key] ?? 0,
+    });
+  }
+
+  return {
+    totalLearned: learnedSet.size,
+    masteredCount,
+    inProgressCount,
+    streak: state.streak,
+    xp: state.xp,
+    dailyGoal,
+    learnedToday: state.activityLog[today] ?? 0,
+    perLevel,
+    weeklyActivity,
+  };
 }
