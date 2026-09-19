@@ -27,6 +27,7 @@ type ProfileScreenProps = {
   profile: OnboardingState;
   onUpdateProfile: (partial: Partial<OnboardingState>) => void;
   onResetOnboarding: () => void;
+  onOpenSettings: () => void;
 };
 
 const typedLevels = levelsData as Level[];
@@ -189,7 +190,7 @@ function QuickStat({
 /* Main screen
 /* ------------------------------------------------------------------ */
 
-export function ProfileScreen({ profile, onUpdateProfile, onResetOnboarding }: ProfileScreenProps) {
+export function ProfileScreen({ profile, onUpdateProfile, onResetOnboarding, onOpenSettings }: ProfileScreenProps) {
   const summary = useSummary(profile.dailyGoal || 10);
   const [sheet, setSheet] = useState<SheetMode>(null);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -219,9 +220,13 @@ export function ProfileScreen({ profile, onUpdateProfile, onResetOnboarding }: P
         subtitleAr="ملفك وتقدّمك"
         icon={<User size={22} />}
         action={
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-text-secondary">
+          <button
+            onClick={onOpenSettings}
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-text-secondary hover:text-text-primary transition-colors"
+            aria-label="الإعدادات"
+          >
             <Settings size={18} />
-          </span>
+          </button>
         }
       />
 

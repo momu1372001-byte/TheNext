@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { BookOpen, Flame, ChevronLeft, Lock, Trophy, ArrowLeft, Play } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BookOpen, Flame, ChevronLeft, Lock, Trophy, ArrowLeft, Play, Target, Zap, CheckCircle2, Sparkles } from 'lucide-react';
 import {
   Screen,
   ScreenHeader,
@@ -18,9 +18,16 @@ import {
   getCategoryById,
   getLevelByCode,
 } from '@/data/vocabularyRepository';
-import { isLessonCompleted, getWordStatus } from '@/data/progressStore';
+import {
+  isLessonCompleted,
+  getWordStatus,
+  getDailySessionProgress,
+  isDailySessionDone,
+  subscribe,
+} from '@/data/progressStore';
 import type { Lesson, OnboardingState } from '@/types';
 import LessonPracticeScreen from './LessonPracticeScreen';
+import DailySessionScreen from './DailySessionScreen';
 
 type LearnScreenProps = {
   profile: OnboardingState;
@@ -38,14 +45,43 @@ function getLessonStatuses(lessons: Lesson[]): LessonStatus[] {
 export function LearnScreen({ profile }: LearnScreenProps) {
   const [openLessonId, setOpenLessonId] = useState<string | null>(null);
   const [practicing, setPracticing] = useState(false);
+  const [inDailySession, setInDailySession] = useState(false);
 
   const dailyGoal = profile.dailyGoal;
-  const learnedToday = 0;
   const level = profile.level ? getLevelByCode(profile.level) : undefined;
   const lessons = profile.level ? getLessonsByLevel(profile.level) : [];
+
+  // Real-time daily progress
+  const [dailyProgress, setDailyProgress] = useState(() => getDailySessionProgress());
+  const [sessionDone, setSessionDone] = useState(() => isDailySessionDone());
+
+  useEffect(() => {
+    setDailyProgress(getDailySessionProgress());
+    setSessionDone(isDailySessionDone());
+    return subscribe(() => {
+      setDailyProgress(getDailySessionProgress());
+      setSessionDone(isDailySessionDone());
+    });
+  }, []);
+
+  const learnedToday = dailyProgress.completed;
+  const goalPct = dailyGoal > 0 ? Math.min(100, Math.round((learnedToday / dailyGoal) * 100)) : 0;
+  const goalComplete = sessionDone || learnedToday >= dailyGoal;
+
   const statuses = getLessonStatuses(lessons);
   const completedCount = statuses.filter((s) => s === 'completed').length;
   const overallProgress = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
+
+  // --- Daily session mode ---
+  if (inDailySession && profile.level) {
+    return (
+      <DailySessionScreen
+        level={profile.level}
+        dailyGoal={dailyGoal}
+        onBack={() => setInDailySession(false)}
+      />
+    );
+  }
 
   // --- Practice mode ---
   if (openLessonId && practicing) {
@@ -151,6 +187,46 @@ export function LearnScreen({ profile }: LearnScreenProps) {
         </div>
       ) : (
         <div className="flex flex-col gap-4 px-5 pb-8">
+          {/* Daily goal hero card */}
+          <Card raised className="p-5 animate-fade-up">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Target size={18} className="text-primary-500" />
+                <span className="text-sm font-semibold text-text-primary">هدف اليوم</span>
+              </div>
+              <span className="text-sm text-text-secondary ltr tabular-nums">
+                {learnedToday}/{dailyGoal}
+              </span>
+            </div>
+            <ProgressBar value={learnedToday} max={dailyGoal} height={10} />
+            <div className="flex items-center justify-between mt-3">
+              <span className="text-2xs text-text-muted ltr tabular-nums">
+                {goalPct >= 100 ? 'تم تحقيق الهدف!' : `${dailyGoal - learnedToday} كلمات متبقّية`}
+              </span>
+              <span className="text-2xs text-text-muted ltr">{goalPct}%</span>
+            </div>
+            {goalComplete ? (
+              <div className="mt-4 flex items-center gap-2 rounded-lg bg-success-500/10 border border-success-500/30 px-4 py-3 animate-fade-up">
+                <CheckCircle2 size={18} className="text-success-400 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-success-400">أحسنت! أكملت جلسة اليوم</p>
+                  <p className="text-2xs text-text-muted">ارجع غداً لمواصلة سلسلتك</p>
+                </div>
+                <Flame size={20} className="text-warning-400 shrink-0" />
+              </div>
+            ) : (
+              <Button
+                fullWidth
+                size="lg"
+                className="mt-4"
+                icon={<Sparkles size={20} />}
+                onClick={() => setInDailySession(true)}
+              >
+                ابدأ جلسة اليوم
+              </Button>
+            )}
+          </Card>
+
           {/* Unit progress banner */}
           <Card raised className="p-5 animate-fade-up">
             <div className="flex items-center justify-between mb-3">
@@ -164,11 +240,6 @@ export function LearnScreen({ profile }: LearnScreenProps) {
             <div className="flex items-center justify-between mt-2">
               <span className="text-2xs text-text-muted">
                 {completedCount} من {lessons.length} دروس مكتملة
-              </span>
-              <span className="flex items-center gap-1 text-2xs text-text-muted">
-                <Flame size={12} className="text-primary-500" />
-                <span className="ltr">{learnedToday}/{dailyGoal}</span>
-                <span>اليوم</span>
               </span>
             </div>
           </Card>

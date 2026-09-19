@@ -218,9 +218,179 @@ export function getReviewWords(): ReviewEntry[] {
   return entries;
 }
 
+/* ------------------------------------------------------------------ */
+/* Daily session — generates a mixed set of new + due review words
+/* based on the user's level and daily goal.
+/* ------------------------------------------------------------------ */
+
+export type DailySession = {
+  date: string;
+  wordIds: string[];
+  completedCount: number;
+  done: boolean;
+};
+
+const SESSION_KEY = 'words-app-session-v1';
+
+function loadSession(): DailySession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as DailySession;
+    const today = dateKey(new Date());
+    if (parsed.date !== today) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(session: DailySession): void {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch {
+    // ignore
+  }
+}
+
+function pickNewWords(level: LevelCode, count: number): string[] {
+  const levelWords = getWordsByLevel(level);
+  const learnedSet = new Set(currentState.learnedWordIds);
+  const fresh = levelWords.filter((w) => !learnedSet.has(w.id) && currentState.words[w.id]?.status !== 'learning');
+  const pool = fresh.length >= count ? fresh : levelWords.filter((w) => !learnedSet.has(w.id));
+  return shuffleIds(pool.map((w) => w.id)).slice(0, count);
+}
+
+function pickReviewWords(count: number): string[] {
+  const review = getReviewWords();
+  return shuffleIds(review.map((r) => r.wordId)).slice(0, count);
+}
+
+function shuffleIds<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export function getOrCreateDailySession(level: LevelCode, dailyGoal: number): DailySession {
+  const existing = loadSession();
+  if (existing) return existing;
+
+  const reviewBudget = Math.min(Math.floor(dailyGoal * 0.4), getReviewWords().length);
+  const newBudget = dailyGoal - reviewBudget;
+
+  const newIds = pickNewWords(level, newBudget);
+  const reviewIds = pickReviewWords(reviewBudget);
+
+  // Deduplicate (a word could theoretically be in both)
+  const seen = new Set<string>();
+  const wordIds: string[] = [];
+  for (const id of [...reviewIds, ...newIds]) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      wordIds.push(id);
+    }
+  }
+
+  const session: DailySession = {
+    date: dateKey(new Date()),
+    wordIds,
+    completedCount: 0,
+    done: wordIds.length === 0,
+  };
+  saveSession(session);
+  return session;
+}
+
+export function getDailySession(): DailySession | null {
+  return loadSession();
+}
+
+export function recordSessionWord(wordId: string, correct: boolean): DailySession {
+  recordWordAnswer(wordId, correct);
+
+  const session = loadSession();
+  if (!session) {
+    // No active session — still recorded the answer, just no session to update
+    return { date: dateKey(new Date()), wordIds: [], completedCount: 0, done: true };
+  }
+
+  // Only count as "completed" if the word was newly learned or reviewed correctly
+  const isLearned = currentState.learnedWordIds.includes(wordId)
+    || currentState.words[wordId]?.status === 'reviewed'
+    || correct;
+
+  const completedCount = isLearned ? session.completedCount + 1 : session.completedCount;
+  const done = completedCount >= session.wordIds.length;
+
+  const updated: DailySession = { ...session, completedCount, done };
+  saveSession(updated);
+  return updated;
+}
+
+export function completeDailySession(): { xpGained: number; newStreak: number } {
+  const session = loadSession();
+  if (!session || session.done) {
+    return { xpGained: 0, newStreak: currentState.streak };
+  }
+
+  const today = dateKey(new Date());
+  const newWordIds = session.wordIds.filter((id) => !currentState.learnedWordIds.includes(id));
+
+  // Add newly learned words to the learned set
+  const learnedSet = new Set(currentState.learnedWordIds);
+  newWordIds.forEach((id) => learnedSet.add(id));
+
+  // Bump streak only once per day
+  let streak = currentState.streak;
+  if (currentState.lastActiveDate !== today) {
+    streak = currentState.lastActiveDate
+      ? currentState.streak + 1
+      : 1;
+  }
+
+  const xpGained = 25 + session.wordIds.length * 5;
+
+  const newlyLearned = learnedSet.size - currentState.learnedWordIds.length;
+  currentState = {
+    ...currentState,
+    learnedWordIds: [...learnedSet],
+    streak,
+    lastActiveDate: today,
+    xp: currentState.xp + xpGained,
+    activityLog: bumpActivity(currentState, today, Math.max(newlyLearned, session.wordIds.length)),
+  };
+  save(currentState);
+
+  const updatedSession: DailySession = { ...session, done: true, completedCount: session.wordIds.length };
+  saveSession(updatedSession);
+
+  notify();
+  return { xpGained, newStreak: streak };
+}
+
+export function isDailySessionDone(): boolean {
+  const session = loadSession();
+  return !session || session.done;
+}
+
+export function getDailySessionProgress(): { completed: number; total: number } {
+  const session = loadSession();
+  if (!session) return { completed: 0, total: 0 };
+  return { completed: session.completedCount, total: session.wordIds.length };
+}
+
 export function resetProgress(): void {
   currentState = { ...INITIAL_STATE };
   save(currentState);
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // ignore
+  }
   notify();
 }
 
