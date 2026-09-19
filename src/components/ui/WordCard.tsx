@@ -1,10 +1,12 @@
 import { Volume2 } from 'lucide-react';
 import { Card } from '@/components/ui';
 import type { Word } from '@/types';
+import type { WordStatus } from '@/data/progressStore';
 
 type WordCardProps = {
   word: Word;
   index?: number;
+  status?: WordStatus;
 };
 
 const POS_LABELS: Record<string, string> = {
@@ -18,7 +20,15 @@ const POS_LABELS: Record<string, string> = {
   phrase: 'عبارة',
 };
 
-export function WordCard({ word, index = 0 }: WordCardProps) {
+const STATUS_BADGES: Record<WordStatus, { label: string; class: string }> = {
+  new: { label: 'جديد', class: 'bg-white/5 text-text-muted' },
+  learning: { label: 'تعلّم', class: 'bg-primary-500/15 text-primary-500' },
+  reviewed: { label: 'مراجع', class: 'bg-success-500/15 text-success-400' },
+};
+
+export function WordCard({ word, index = 0, status = 'new' }: WordCardProps) {
+  const badge = STATUS_BADGES[status];
+
   return (
     <Card
       className="p-4 animate-fade-up"
@@ -31,6 +41,9 @@ export function WordCard({ word, index = 0 }: WordCardProps) {
             <span className="shrink-0 rounded-pill bg-primary-500/15 px-2 py-0.5 text-2xs font-semibold text-primary-500">
               {word.cefrLevel}
             </span>
+            <span className={`shrink-0 rounded-pill px-2 py-0.5 text-2xs font-semibold ${badge.class}`}>
+              {badge.label}
+            </span>
           </div>
           <p className="text-sm font-semibold text-text-secondary mt-0.5">
             {word.arabicTranslation}
@@ -39,6 +52,15 @@ export function WordCard({ word, index = 0 }: WordCardProps) {
         <button
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-pill bg-white/5 text-text-muted hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
           aria-label="استمع للنطق"
+          onClick={() => {
+            try {
+              const utterance = new SpeechSynthesisUtterance(word.word);
+              utterance.lang = 'en-US';
+              window.speechSynthesis.speak(utterance);
+            } catch {
+              // speech not available
+            }
+          }}
         >
           <Volume2 size={16} />
         </button>

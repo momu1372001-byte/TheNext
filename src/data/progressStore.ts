@@ -2,10 +2,18 @@ import type { LevelCode } from '@/types';
 
 const STORAGE_KEY = 'words-app-progress-v1';
 
+export type WordStatus = 'new' | 'learning' | 'reviewed';
+
 export type LessonProgress = {
   completed: boolean;
   bestScore: number; // 0-100
   completedAt: string | null;
+};
+
+export type WordProgress = {
+  status: WordStatus;
+  correctCount: number;
+  wrongCount: number;
 };
 
 export type ProgressState = {
@@ -13,6 +21,7 @@ export type ProgressState = {
   learnedWordIds: string[];
   streak: number;
   lastActiveDate: string | null;
+  words: Record<string, WordProgress>;
 };
 
 const INITIAL_STATE: ProgressState = {
@@ -20,18 +29,20 @@ const INITIAL_STATE: ProgressState = {
   learnedWordIds: [],
   streak: 0,
   lastActiveDate: null,
+  words: {},
 };
 
 function load(): ProgressState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...INITIAL_STATE };
-    const parsed = JSON.parse(raw) as ProgressState;
+    const parsed = JSON.parse(raw) as Partial<ProgressState>;
     return {
       lessons: parsed.lessons ?? {},
       learnedWordIds: parsed.learnedWordIds ?? [],
       streak: parsed.streak ?? 0,
       lastActiveDate: parsed.lastActiveDate ?? null,
+      words: parsed.words ?? {},
     };
   } catch {
     return { ...INITIAL_STATE };
@@ -76,6 +87,36 @@ export function getCompletedLessonsForLevel(_level: LevelCode, lessonIds: string
 
 export function getLearnedWordCount(): number {
   return currentState.learnedWordIds.length;
+}
+
+export function getWordStatus(wordId: string): WordStatus {
+  return currentState.words[wordId]?.status ?? 'new';
+}
+
+export function getWordProgress(wordId: string): WordProgress | undefined {
+  return currentState.words[wordId];
+}
+
+export function recordWordAnswer(wordId: string, correct: boolean): void {
+  const existing = currentState.words[wordId];
+  const correctCount = (existing?.correctCount ?? 0) + (correct ? 1 : 0);
+  const wrongCount = (existing?.wrongCount ?? 0) + (correct ? 0 : 1);
+  let status: WordStatus = 'learning';
+  if (correctCount >= 2) {
+    status = 'reviewed';
+  } else {
+    status = 'learning';
+  }
+
+  currentState = {
+    ...currentState,
+    words: {
+      ...currentState.words,
+      [wordId]: { status, correctCount, wrongCount },
+    },
+  };
+  save(currentState);
+  notify();
 }
 
 export function markLessonComplete(lessonId: string, score: number, wordIds: string[]): void {
