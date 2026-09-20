@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { ChevronLeft, Check, X, Volume2, Star, Trophy, RotateCcw } from 'lucide-react';
 import { Screen, ProgressBar, Button } from '@/components/ui';
 import { getAllWords } from '@/data/vocabularyRepository';
@@ -217,8 +217,6 @@ export function ExerciseRunner({
     setPhase('practice');
   }, [onRestart]);
 
-  const handleBackToOverview = useMemo(() => onBack, [onBack]);
-
   if (exercises.length === 0 || !current) {
     return (
       <Screen scroll={false}>
@@ -308,7 +306,7 @@ export function ExerciseRunner({
                 {restartLabel}
               </Button>
             )}
-            <Button fullWidth size="md" variant="ghost" onClick={handleBackToOverview}>
+            <Button fullWidth size="md" variant="ghost" onClick={onBack}>
               {backLabel}
             </Button>
           </div>

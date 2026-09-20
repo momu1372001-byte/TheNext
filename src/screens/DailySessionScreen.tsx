@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Zap, Flame, ArrowLeft } from 'lucide-react';
-import { Screen, ProgressBar, Button, ExerciseRunner, buildExercisesForWords, type Exercise } from '@/components/ui';
+import { Screen, Button, ExerciseRunner, buildExercisesForWords, type Exercise } from '@/components/ui';
 import { getWordById } from '@/data/vocabularyRepository';
 import {
   getOrCreateDailySession,
@@ -33,14 +33,10 @@ export function DailySessionScreen({ level, dailyGoal, onBack }: DailySessionScr
   const [exercises] = useState<Exercise[]>(() => buildExercisesForWords(sessionWords, { widePool: true }));
 
   const handleAnswer = useCallback(
-    (_word: Word, correct: boolean) => {
-      if (exercises.length === 0) return;
-      const current = exercises.find(() => true);
-      if (current) {
-        recordSessionWord(current.word.id, correct);
-      }
+    (word: Word, correct: boolean) => {
+      recordSessionWord(word.id, correct);
     },
-    [exercises],
+    [],
   );
 
   const handleComplete = useCallback(
@@ -78,7 +74,6 @@ export function DailySessionScreen({ level, dailyGoal, onBack }: DailySessionScr
 
   // --- Done phase ---
   if (phase === 'done') {
-    const total = exercises.length;
     const score = doneScore;
 
     return (

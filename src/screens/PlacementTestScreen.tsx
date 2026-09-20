@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronLeft, Check, X, GraduationCap, Trophy, ArrowLeft, RotateCcw } from 'lucide-react';
+import { ChevronLeft, Check, X, GraduationCap, Trophy, RotateCcw } from 'lucide-react';
 import { Screen, ProgressBar, Button, Card } from '@/components/ui';
 import { getAllWords, getAllLevels } from '@/data/vocabularyRepository';
 import { savePlacementResult } from '@/data/progressStore';

@@ -3,9 +3,7 @@ import { ChartBar as BarChart3, Flame, Zap, BookOpen, CircleCheck as CheckCircle
 import { Screen, ScreenHeader, Card, ProgressBar } from '@/components/ui';
 import { getProgressSummary, getStrengthsAndWeaknesses, getWeakWords, subscribe, type ProgressSummary, type SkillAnalysis } from '@/data/progressStore';
 import { getLevelByCode, getAppConfig, getCategoryById } from '@/data/vocabularyRepository';
-import type { OnboardingState } from '@/types';
-import type { LevelCode } from '@/types';
-import type { Word } from '@/types';
+import type { OnboardingState, LevelCode, Word } from '@/types';
 
 type ProgressScreenProps = {
   profile: OnboardingState;

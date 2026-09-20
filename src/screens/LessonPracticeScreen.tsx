@@ -3,7 +3,6 @@ import { getLessonById, getCategoryById, getWordsByLesson } from '@/data/vocabul
 import { markLessonComplete, checkAndUnlockAchievements, recordSessionAccuracy } from '@/data/progressStore';
 import { ExerciseRunner, buildExercisesForWords, type Exercise } from '@/components/ui';
 import { Screen } from '@/components/ui';
-import { Zap, Flame } from 'lucide-react';
 
 type LessonPracticeScreenProps = {
   lessonId: string;
