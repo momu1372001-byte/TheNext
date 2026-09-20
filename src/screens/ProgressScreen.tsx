@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ChartBar as BarChart3, Flame, Zap, BookOpen, CircleCheck as CheckCircle2, Loader as Loader2 } from 'lucide-react';
+import { ChartBar as BarChart3, Flame, Zap, BookOpen, CircleCheck as CheckCircle2, Loader as Loader2, TrendingUp, TrendingDown, Award, Target } from 'lucide-react';
 import { Screen, ScreenHeader, Card, ProgressBar } from '@/components/ui';
-import { getProgressSummary, subscribe, type ProgressSummary } from '@/data/progressStore';
-import { getLevelByCode, getAppConfig } from '@/data/vocabularyRepository';
+import { getProgressSummary, getStrengthsAndWeaknesses, getWeakWords, subscribe, type ProgressSummary, type SkillAnalysis } from '@/data/progressStore';
+import { getLevelByCode, getAppConfig, getCategoryById } from '@/data/vocabularyRepository';
 import type { OnboardingState } from '@/types';
 import type { LevelCode } from '@/types';
+import type { Word } from '@/types';
 
 type ProgressScreenProps = {
   profile: OnboardingState;
@@ -128,6 +129,18 @@ function LevelRow({
 
 export function ProgressScreen({ profile }: ProgressScreenProps) {
   const summary = useSummary(profile.dailyGoal || 10);
+  const [skillsAnalysis, setSkillsAnalysis] = useState<SkillAnalysis[]>(() => getStrengthsAndWeaknesses());
+  const [weakWords, setWeakWords] = useState<Word[]>(() => getWeakWords(5));
+
+  useEffect(() => {
+    setSkillsAnalysis(getStrengthsAndWeaknesses());
+    setWeakWords(getWeakWords(5));
+    return subscribe(() => {
+      setSkillsAnalysis(getStrengthsAndWeaknesses());
+      setWeakWords(getWeakWords(5));
+    });
+  }, []);
+
   const targetTotal = getAppConfig().totalWords;
   const overallPct = Math.round((summary.totalLearned / targetTotal) * 100);
   const goalPct = Math.min(100, Math.round((summary.learnedToday / summary.dailyGoal) * 100));
@@ -246,6 +259,72 @@ export function ProgressScreen({ profile }: ProgressScreenProps) {
             ))}
           </div>
         </Card>
+
+        {/* Strengths & Weaknesses */}
+        {skillsAnalysis.length > 0 && (
+          <Card className="p-5 animate-fade-up">
+            <p className="text-sm font-semibold text-text-primary mb-3">نقاط القوة والضعف</p>
+            <div className="flex flex-col gap-3">
+              {skillsAnalysis.map((skill) => {
+                const category = getCategoryById(skill.categoryId);
+                const isStrong = skill.strength === 'strong';
+                const isWeak = skill.strength === 'weak';
+                const accentColor = isStrong ? 'text-success-400' : isWeak ? 'text-error-400' : 'text-warning-400';
+                const bgColor = isStrong ? 'bg-success-500/10' : isWeak ? 'bg-error-500/10' : 'bg-warning-500/10';
+                const Icon = isStrong ? TrendingUp : isWeak ? TrendingDown : Target;
+                return (
+                  <div key={skill.categoryId} className="flex items-center gap-3">
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${bgColor} ${accentColor}`}>
+                      <Icon size={16} />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text-secondary">{category?.nameAr ?? skill.categoryId}</p>
+                      <p className="text-2xs text-text-muted ltr">
+                        {skill.correctAnswers}/{skill.totalAnswers} · {skill.accuracy}%
+                      </p>
+                    </div>
+                    <span className={`text-sm font-bold ${accentColor} ltr`}>{skill.accuracy}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
+        {/* Weak words preview */}
+        {weakWords.length > 0 && (
+          <Card className="p-5 animate-fade-up">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingDown size={16} className="text-error-400" />
+              <p className="text-sm font-semibold text-text-primary">كلمات تحتاج اهتمامك</p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {weakWords.map((w) => (
+                <div
+                  key={w.id}
+                  className="flex items-center justify-between rounded-md bg-surface border border-border/50 px-4 py-2.5"
+                >
+                  <span className="text-sm font-medium text-text-secondary ltr">{w.word}</span>
+                  <span className="text-sm text-primary-500">{w.arabicTranslation}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Best session accuracy */}
+        {summary.bestSessionAccuracy > 0 && (
+          <Card className="p-4 flex items-center gap-3 animate-fade-up">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/15 text-primary-400">
+              <Award size={18} />
+            </span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-text-primary">أفضل دقة في جلسة</p>
+              <p className="text-2xs text-text-muted">أعلى نسبة إجابات صحيحة في جلسة واحدة</p>
+            </div>
+            <span className="text-lg font-bold text-primary-400 ltr">{summary.bestSessionAccuracy}%</span>
+          </Card>
+        )}
       </div>
     </Screen>
   );

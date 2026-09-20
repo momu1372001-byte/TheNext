@@ -8,4 +8,6 @@ export { ScreenHeader } from './ScreenHeader';
 export { CategoryIcon } from './CategoryIcon';
 export { WordCard } from './WordCard';
 export { LessonPathNode } from './LessonPathNode';
+export { ExerciseRunner, buildExercisesForWords, shuffleArray, EXERCISE_TYPE_LABELS } from './ExerciseRunner';
+export type { Exercise, ExerciseType, ExerciseSessionResult } from './ExerciseRunner';
 export type { LessonStatus } from './LessonPathNode';

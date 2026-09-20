@@ -15,10 +15,13 @@ import {
   Target,
   Settings,
   X,
+  Award,
+  Lock,
 } from 'lucide-react';
 import { Screen, ScreenHeader, Card, Button } from '@/components/ui';
 import { getProgressSummary, subscribe, type ProgressSummary } from '@/data/progressStore';
 import { getLevelByCode } from '@/data/vocabularyRepository';
+import { ACHIEVEMENTS } from '@/data/achievements';
 import type { OnboardingState, LevelCode, DailyGoal, Level } from '@/types';
 import levelsData from '@/data/levels.json';
 import goalsData from '@/data/goals.json';
@@ -299,6 +302,47 @@ export function ProfileScreen({ profile, onUpdateProfile, onResetOnboarding, onO
             label="هدف اليوم"
             accent="bg-warning-500/10"
           />
+        </div>
+
+        {/* Achievements */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-2xs font-semibold text-text-muted">الإنجازات</p>
+            <span className="text-2xs text-text-muted ltr tabular-nums">
+              {summary.unlockedAchievements.length}/{ACHIEVEMENTS.length}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            {ACHIEVEMENTS.map((ach) => {
+              const unlocked = summary.unlockedAchievements.includes(ach.id);
+              const Icon = unlocked ? ach.icon : Lock;
+              return (
+                <div
+                  key={ach.id}
+                  className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-all ${
+                    unlocked
+                      ? 'border-primary-500/40 bg-primary-500/5'
+                      : 'border-border/50 bg-surface/50 opacity-60'
+                  }`}
+                >
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                      unlocked ? 'bg-primary-500/15 text-primary-400' : 'bg-white/5 text-text-muted'
+                    }`}
+                  >
+                    <Icon size={18} />
+                  </span>
+                  <span className={`text-2xs font-semibold leading-tight ${unlocked ? 'text-text-primary' : 'text-text-muted'}`}>
+                    {ach.titleAr}
+                  </span>
+                  <span className="text-2xs text-text-muted leading-tight">{ach.descriptionAr}</span>
+                  {unlocked && (
+                    <span className="text-2xs text-primary-400 ltr">+{ach.xpReward} XP</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Editable preferences */}

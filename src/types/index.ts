@@ -33,6 +33,8 @@ export type Category = {
   icon: string;
 };
 
+export type LessonType = 'vocabulary' | 'grammar' | 'listening' | 'reading' | 'writing' | 'speaking';
+
 export type Lesson = {
   id: string;
   level: LevelCode;
@@ -42,6 +44,7 @@ export type Lesson = {
   descriptionAr: string;
   order: number;
   wordIds: string[];
+  type?: LessonType;
 };
 
 /**

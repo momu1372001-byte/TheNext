@@ -1,5 +1,6 @@
 import type { LevelCode, Word } from '@/types';
-import { getWordsByLevel, getAllLevels } from '@/data/vocabularyRepository';
+import { getWordsByLevel, getAllLevels, getWordById } from '@/data/vocabularyRepository';
+import { ACHIEVEMENTS } from '@/data/achievements';
 
 const STORAGE_KEY = 'words-app-progress-v1';
 
@@ -20,6 +21,12 @@ export type WordProgress = {
 /** Map of YYYY-MM-DD -> count of words learned that day. */
 export type ActivityLog = Record<string, number>;
 
+export type PlacementResult = {
+  recommendedLevel: LevelCode;
+  score: number;
+  completedAt: string;
+};
+
 export type ProgressState = {
   lessons: Record<string, LessonProgress>;
   learnedWordIds: string[];
@@ -28,6 +35,10 @@ export type ProgressState = {
   words: Record<string, WordProgress>;
   xp: number;
   activityLog: ActivityLog;
+  unlockedAchievements: string[];
+  placement: PlacementResult | null;
+  bestSessionAccuracy: number;
+  dailyGoalsCompleted: number;
 };
 
 const INITIAL_STATE: ProgressState = {
@@ -38,6 +49,10 @@ const INITIAL_STATE: ProgressState = {
   words: {},
   xp: 0,
   activityLog: {},
+  unlockedAchievements: [],
+  placement: null,
+  bestSessionAccuracy: 0,
+  dailyGoalsCompleted: 0,
 };
 
 function load(): ProgressState {
@@ -53,6 +68,10 @@ function load(): ProgressState {
       words: parsed.words ?? {},
       xp: parsed.xp ?? 0,
       activityLog: parsed.activityLog ?? {},
+      unlockedAchievements: parsed.unlockedAchievements ?? [],
+      placement: parsed.placement ?? null,
+      bestSessionAccuracy: parsed.bestSessionAccuracy ?? 0,
+      dailyGoalsCompleted: parsed.dailyGoalsCompleted ?? 0,
     };
   } catch {
     return { ...INITIAL_STATE };
@@ -395,6 +414,166 @@ export function resetProgress(): void {
 }
 
 /* ------------------------------------------------------------------ */
+/* Achievements
+/* ------------------------------------------------------------------ */
+
+export function getUnlockedAchievements(): string[] {
+  return [...currentState.unlockedAchievements];
+}
+
+export function checkAndUnlockAchievements(): string[] {
+  const newlyUnlocked: string[] = [];
+
+  for (const achievement of ACHIEVEMENTS) {
+    if (currentState.unlockedAchievements.includes(achievement.id)) continue;
+
+    let value = 0;
+    switch (achievement.category) {
+      case 'streak':
+        value = currentState.streak;
+        break;
+      case 'xp':
+        value = currentState.xp;
+        break;
+      case 'words':
+        value = currentState.learnedWordIds.length;
+        break;
+      case 'lessons':
+        value = Object.values(currentState.lessons).filter((l) => l.completed).length;
+        break;
+      case 'accuracy':
+        value = currentState.bestSessionAccuracy;
+        break;
+      case 'milestone':
+        value = currentState.dailyGoalsCompleted;
+        break;
+    }
+
+    if (value >= achievement.threshold) {
+      newlyUnlocked.push(achievement.id);
+    }
+  }
+
+  if (newlyUnlocked.length > 0) {
+    const bonusXp = newlyUnlocked.reduce((sum, id) => {
+      const ach = ACHIEVEMENTS.find((a) => a.id === id);
+      return sum + (ach?.xpReward ?? 0);
+    }, 0);
+
+    currentState = {
+      ...currentState,
+      unlockedAchievements: [...currentState.unlockedAchievements, ...newlyUnlocked],
+      xp: currentState.xp + bonusXp,
+    };
+    save(currentState);
+    notify();
+  }
+
+  return newlyUnlocked;
+}
+
+/* ------------------------------------------------------------------ */
+/* Placement test
+/* ------------------------------------------------------------------ */
+
+export function savePlacementResult(result: PlacementResult): void {
+  currentState = {
+    ...currentState,
+    placement: result,
+  };
+  save(currentState);
+  notify();
+}
+
+export function getPlacementResult(): PlacementResult | null {
+  return currentState.placement;
+}
+
+/* ------------------------------------------------------------------ */
+/* Session accuracy tracking
+/* ------------------------------------------------------------------ */
+
+export function recordSessionAccuracy(accuracy: number): void {
+  if (accuracy > currentState.bestSessionAccuracy) {
+    currentState = {
+      ...currentState,
+      bestSessionAccuracy: Math.round(accuracy),
+    };
+    save(currentState);
+    checkAndUnlockAchievements();
+    notify();
+  }
+}
+
+export function recordDailyGoalCompleted(): void {
+  currentState = {
+    ...currentState,
+    dailyGoalsCompleted: currentState.dailyGoalsCompleted + 1,
+  };
+  save(currentState);
+  checkAndUnlockAchievements();
+  notify();
+}
+
+/* ------------------------------------------------------------------ */
+/* Strengths & weaknesses analysis
+/* ------------------------------------------------------------------ */
+
+export type SkillAnalysis = {
+  categoryId: string;
+  totalAnswers: number;
+  correctAnswers: number;
+  accuracy: number;
+  strength: 'strong' | 'medium' | 'weak';
+};
+
+export function getStrengthsAndWeaknesses(): SkillAnalysis[] {
+  const state = currentState;
+  const results: SkillAnalysis[] = [];
+  const categoryMap = new Map<string, { correct: number; total: number }>();
+
+  for (const [wordId, progress] of Object.entries(state.words)) {
+    const word = getWordById(wordId);
+    if (!word) continue;
+    const cat = word.category;
+    if (!categoryMap.has(cat)) categoryMap.set(cat, { correct: 0, total: 0 });
+    const entry = categoryMap.get(cat)!;
+    entry.total += progress.correctCount + progress.wrongCount;
+    entry.correct += progress.correctCount;
+  }
+
+  for (const [categoryId, data] of categoryMap) {
+    const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+    let strength: 'strong' | 'medium' | 'weak' = 'medium';
+    if (accuracy >= 80) strength = 'strong';
+    else if (accuracy < 50) strength = 'weak';
+    results.push({
+      categoryId,
+      totalAnswers: data.total,
+      correctAnswers: data.correct,
+      accuracy,
+      strength,
+    });
+  }
+
+  results.sort((a, b) => a.accuracy - b.accuracy);
+  return results;
+}
+
+export function getWeakWords(limit = 10): Word[] {
+  const state = currentState;
+  const weakIds = Object.entries(state.words)
+    .filter(([, p]) => p.wrongCount > 0)
+    .sort((a, b) => b[1].wrongCount - a[1].wrongCount)
+    .slice(0, limit)
+    .map(([id]) => id);
+
+  return weakIds
+    .map((id) => getWordById(id))
+    .filter((w): w is Word => Boolean(w));
+}
+
+/* ------------------------------------------------------------------ */
 /* Derived selectors (read-only, used by the Progress screen)
 /* ------------------------------------------------------------------ */
 
@@ -408,6 +587,9 @@ export type ProgressSummary = {
   learnedToday: number;
   perLevel: Array<{ code: LevelCode; learned: number; total: number }>;
   weeklyActivity: Array<{ date: string; label: string; count: number }>;
+  unlockedAchievements: string[];
+  bestSessionAccuracy: number;
+  placement: PlacementResult | null;
 };
 
 const ARABIC_DAY_LABELS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -463,5 +645,8 @@ export function getProgressSummary(dailyGoal: number): ProgressSummary {
     learnedToday: state.activityLog[today] ?? 0,
     perLevel,
     weeklyActivity,
+    unlockedAchievements: [...state.unlockedAchievements],
+    bestSessionAccuracy: state.bestSessionAccuracy,
+    placement: state.placement,
   };
 }
