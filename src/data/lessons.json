@@ -98,5 +98,105 @@
     "descriptionAr": "مفردات متقدمة في الصحة والطب",
     "order": 2,
     "wordIds": ["c1-009", "c1-010", "c1-011", "c1-012", "c1-013", "c1-014", "c1-015", "c1-016"]
+  },
+  {
+    "id": "a1-home-1",
+    "level": "A1",
+    "category": "everyday",
+    "titleAr": "البيت والأثاث",
+    "titleEn": "Home & Furniture",
+    "descriptionAr": "مفردات عن أثاث المنزل وغرفه",
+    "order": 3,
+    "wordIds": ["a1-017", "a1-018", "a1-019", "a1-020", "a1-021", "a1-022", "a1-023", "a1-024"]
+  },
+  {
+    "id": "a1-time-1",
+    "level": "A1",
+    "category": "everyday",
+    "titleAr": "الوقت والأيام",
+    "titleEn": "Time & Days",
+    "descriptionAr": "كلمات عن الوقت وأيام الأسبوع والشهور",
+    "order": 4,
+    "wordIds": ["a1-025", "a1-026", "a1-027", "a1-028", "a1-029", "a1-030", "a1-031", "a1-032"]
+  },
+  {
+    "id": "a2-shopping-1",
+    "level": "A2",
+    "category": "travel",
+    "titleAr": "التسوق والملابس",
+    "titleEn": "Shopping & Clothes",
+    "descriptionAr": "مفردات للتسوق وشراء الملابس",
+    "order": 3,
+    "wordIds": ["a2-017", "a2-018", "a2-019", "a2-020", "a2-021", "a2-022", "a2-023", "a2-024"]
+  },
+  {
+    "id": "a2-communication-1",
+    "level": "A2",
+    "category": "work",
+    "titleAr": "الهاتف والاتصال",
+    "titleEn": "Phone & Communication",
+    "descriptionAr": "مفردات للاتصال والمراسلة في العمل",
+    "order": 4,
+    "wordIds": ["a2-025", "a2-026", "a2-027", "a2-028", "a2-029", "a2-030", "a2-031", "a2-032"]
+  },
+  {
+    "id": "b1-tourism-1",
+    "level": "B1",
+    "category": "travel",
+    "titleAr": "السفر والسياحة",
+    "titleEn": "Travel & Tourism",
+    "descriptionAr": "مفردات للسياحة واستكشاف الأماكن",
+    "order": 3,
+    "wordIds": ["b1-017", "b1-018", "b1-019", "b1-020", "b1-021", "b1-022", "b1-023", "b1-024"]
+  },
+  {
+    "id": "b1-reading-1",
+    "level": "B1",
+    "category": "education",
+    "titleAr": "القراءة والكتب",
+    "titleEn": "Reading & Books",
+    "descriptionAr": "مفردات عن القراءة والمكتبات والكتب",
+    "order": 4,
+    "wordIds": ["b1-025", "b1-026", "b1-027", "b1-028", "b1-029", "b1-030", "b1-031", "b1-032"]
+  },
+  {
+    "id": "b2-politics-1",
+    "level": "B2",
+    "category": "society",
+    "titleAr": "السياسة والحكومة",
+    "titleEn": "Politics & Government",
+    "descriptionAr": "مفردات للنقاشات السياسية والقوانين",
+    "order": 3,
+    "wordIds": ["b2-017", "b2-018", "b2-019", "b2-020", "b2-021", "b2-022", "b2-023", "b2-024"]
+  },
+  {
+    "id": "b2-weather-1",
+    "level": "B2",
+    "category": "nature",
+    "titleAr": "الطقس والفصول",
+    "titleEn": "Weather & Seasons",
+    "descriptionAr": "مفردات عن الطقس والفصول والظواهر الطبيعية",
+    "order": 4,
+    "wordIds": ["b2-025", "b2-026", "b2-027", "b2-028", "b2-029", "b2-030", "b2-031", "b2-032"]
+  },
+  {
+    "id": "c1-economy-1",
+    "level": "C1",
+    "category": "work",
+    "titleAr": "الاقتصاد والمال",
+    "titleEn": "Economy & Finance",
+    "descriptionAr": "مفردات متقدمة في الاقتصاد والاستثمار",
+    "order": 3,
+    "wordIds": ["c1-017", "c1-018", "c1-019", "c1-020", "c1-021", "c1-022", "c1-023", "c1-024"]
+  },
+  {
+    "id": "c1-arts-1",
+    "level": "C1",
+    "category": "society",
+    "titleAr": "الفنون والأدب",
+    "titleEn": "Arts & Literature",
+    "descriptionAr": "مفردات متقدمة في الفن والأدب والإبداع",
+    "order": 4,
+    "wordIds": ["c1-025", "c1-026", "c1-027", "c1-028", "c1-029", "c1-030", "c1-031", "c1-032"]
   }
 ]
