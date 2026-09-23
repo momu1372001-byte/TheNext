@@ -9,6 +9,15 @@ import {
   Cpu,
   Activity,
   Users,
+  Palette,
+  Music,
+  Shirt,
+  Trophy,
+  Car,
+  Cloud,
+  Building2,
+  BookOpen,
+  Baby,
   Tag,
   type LucideIcon,
 } from 'lucide-react';
@@ -24,6 +33,15 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Cpu,
   Activity,
   Users,
+  Palette,
+  Music,
+  Shirt,
+  Trophy,
+  Car,
+  Cloud,
+  Building2,
+  BookOpen,
+  Baby,
 };
 
 type CategoryIconProps = {
