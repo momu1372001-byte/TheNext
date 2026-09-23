@@ -16,11 +16,15 @@ import {
   Settings,
   X,
   Lock,
+  LogOut,
+  CloudOff,
+  Mail,
 } from 'lucide-react';
 import { Screen, ScreenHeader, Card, Button } from '@/components/ui';
 import { getProgressSummary, subscribe, type ProgressSummary } from '@/data/progressStore';
 import { getLevelByCode } from '@/data/vocabularyRepository';
 import { ACHIEVEMENTS } from '@/data/achievements';
+import { useAuth } from '@/auth/AuthContext';
 import type { OnboardingState, LevelCode, DailyGoal, Level } from '@/types';
 import levelsData from '@/data/levels.json';
 import goalsData from '@/data/goals.json';
@@ -30,6 +34,7 @@ type ProfileScreenProps = {
   onUpdateProfile: (partial: Partial<OnboardingState>) => void;
   onResetOnboarding: () => void;
   onOpenSettings: () => void;
+  onRequestAuth: () => void;
 };
 
 const typedLevels = levelsData as Level[];
@@ -191,12 +196,23 @@ function QuickStat({
 /* Main screen
 /* ------------------------------------------------------------------ */
 
-export function ProfileScreen({ profile, onUpdateProfile, onResetOnboarding, onOpenSettings }: ProfileScreenProps) {
+export function ProfileScreen({
+  profile,
+  onUpdateProfile,
+  onResetOnboarding,
+  onOpenSettings,
+  onRequestAuth,
+}: ProfileScreenProps) {
   const summary = useSummary(profile.dailyGoal || 10);
   const [sheet, setSheet] = useState<SheetMode>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const { user, profile: authProfile, isGuest, signOut } = useAuth();
 
   const currentLevel = getLevelByCode(profile.level ?? 'A1');
+  const isSignedIn = Boolean(user);
+  const displayName = authProfile?.fullName || authProfile?.email || (user?.email ?? '');
+  const initial = displayName ? displayName.charAt(0).toUpperCase() : 'م';
 
   const settings = [
     { icon: <Bell size={18} />, labelAr: 'الإشعارات', hintAr: 'تذكير يومي' },
@@ -212,6 +228,11 @@ export function ProfileScreen({ profile, onUpdateProfile, onResetOnboarding, onO
   const handlePickGoal = (goal: number) => {
     onUpdateProfile({ dailyGoal: goal });
     setSheet(null);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setConfirmSignOut(false);
   };
 
   return (
@@ -232,12 +253,38 @@ export function ProfileScreen({ profile, onUpdateProfile, onResetOnboarding, onO
       />
 
       <div className="flex flex-col gap-4 px-5 pb-8">
+        {/* Guest auth prompt — shown when user hasn't signed in */}
+        {!isSignedIn && (
+          <Card
+            raised
+            className="p-5 animate-fade-up border-primary-500/30 bg-gradient-to-br from-primary-500/10 to-accent-500/5"
+          >
+            <div className="flex items-start gap-3 mb-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-500/20 text-primary-400">
+                <CloudOff size={20} />
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-text-primary">احفظ تقدّمك</p>
+                <p className="text-2xs text-text-muted leading-relaxed mt-0.5">
+                  سجّل دخولك الآن لحفظ تقدّمك ومزامنته عبر أجهزتك. إذا فتحت التطبيق على جهاز آخر، ستجد كل كلماتك وسلسلتك بانتظارك.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onRequestAuth}
+              className="flex items-center justify-center gap-2 rounded-xl bg-primary-500 text-neutral-950 font-bold py-3 text-sm hover:bg-primary-400 active:scale-[0.98] transition-all duration-200 shadow-glow w-full"
+            >
+              تسجيل الدخول
+            </button>
+          </Card>
+        )}
+
         {/* User card */}
         <Card raised className="p-5 animate-fade-up">
           <div className="flex items-center gap-4">
             <div className="relative shrink-0">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-400 to-accent-500 text-neutral-950 shadow-glow">
-                <GraduationCap size={32} />
+                <span className="text-2xl font-bold">{initial}</span>
               </div>
               <span
                 className="absolute -bottom-1 -right-1 flex h-6 w-9 items-center justify-center rounded-md text-2xs font-bold ltr border-2 border-surface-raised"
@@ -247,10 +294,24 @@ export function ProfileScreen({ profile, onUpdateProfile, onResetOnboarding, onO
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-lg font-bold text-text-primary">متعلم</p>
-              <p className="text-sm text-text-muted">
-                {currentLevel?.nameAr ?? '—'} · {currentLevel?.nameEn ?? '—'}
+              <p className="text-lg font-bold text-text-primary truncate">
+                {isSignedIn ? displayName : 'متعلم'}
               </p>
+              <p className="text-sm text-text-muted">
+                {isSignedIn ? (
+                  <span className="flex items-center gap-1.5">
+                    <Mail size={12} className="shrink-0" />
+                    <span className="truncate" dir="ltr">{user?.email}</span>
+                  </span>
+                ) : (
+                  `${currentLevel?.nameAr ?? '—'} · ${currentLevel?.nameEn ?? '—'}`
+                )}
+              </p>
+              {isSignedIn && (
+                <p className="text-2xs text-text-muted mt-0.5">
+                  {currentLevel?.nameAr ?? '—'} · {currentLevel?.nameEn ?? '—'}
+                </p>
+              )}
             </div>
           </div>
 
@@ -397,6 +458,51 @@ export function ProfileScreen({ profile, onUpdateProfile, onResetOnboarding, onO
             </Card>
           ))}
         </div>
+
+        {/* Sign out — only for signed-in users */}
+        {isSignedIn && (
+          <div className="pt-2">
+            {!confirmSignOut ? (
+              <Button
+                variant="ghost"
+                fullWidth
+                onClick={() => setConfirmSignOut(true)}
+                className="text-text-secondary hover:text-text-primary hover:bg-white/5"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <LogOut size={16} />
+                  تسجيل الخروج
+                </span>
+              </Button>
+            ) : (
+              <Card className="p-4 animate-fade-up border-warning-500/30">
+                <p className="text-sm font-semibold text-text-primary mb-1">تأكيد تسجيل الخروج</p>
+                <p className="text-2xs text-text-muted mb-3">
+                  سيبقى تقدّمك محفوظاً على هذا الجهاز. يمكنك تسجيل الدخول مرة أخرى لاستعادته.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                    onClick={() => setConfirmSignOut(false)}
+                  >
+                    إلغاء
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    fullWidth
+                    className="bg-warning-500 hover:bg-warning-400 text-neutral-950 shadow-none"
+                    onClick={handleSignOut}
+                  >
+                    تسجيل الخروج
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* Reset */}
         <div className="pt-2">

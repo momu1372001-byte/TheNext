@@ -12,20 +12,43 @@ import SettingsScreen from '@/SettingsScreen';
 import { useSettings } from '@/useSettings';
 import { AuthProvider, useAuth } from '@/auth/AuthContext';
 import AuthScreen from '@/screens/AuthScreen';
-
-const AUTH_SKIP_KEY = 'words-app-auth-skipped';
+import { supabase } from '@/lib/supabaseClient';
 
 function AppInner() {
-  const { user, loading } = useAuth();
+  const { user, profile: authProfile, loading } = useAuth();
   const [profile, setProfile] = useState<OnboardingState>(() => loadProfile());
   const [activeTab, setActiveTab] = useState<TabKey>('learn');
   const [showSettings, setShowSettings] = useState(false);
-  const [authSkipped, setAuthSkipped] = useState(() => localStorage.getItem(AUTH_SKIP_KEY) === 'true');
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   useSettings();
 
   // Re-render on progress store changes (streak/XP updates, etc.)
   const [, setTick] = useState(0);
   useEffect(() => subscribe(() => setTick((t) => t + 1)), []);
+
+  // If user signs in and has a server profile, sync level/dailyGoal to local onboarding
+  useEffect(() => {
+    if (authProfile && (authProfile.level || authProfile.dailyGoal)) {
+      const local = loadProfile();
+      const serverLevel = authProfile.level as OnboardingState['level'];
+      if (serverLevel && (!local.level || local.level !== serverLevel)) {
+        const next = { ...local, level: serverLevel };
+        saveProfile(next);
+        setProfile(next);
+      }
+      if (authProfile.dailyGoal && local.dailyGoal !== authProfile.dailyGoal) {
+        const next = { ...local, dailyGoal: authProfile.dailyGoal };
+        saveProfile(next);
+        setProfile(next);
+      }
+      // If onboarding wasn't completed locally but user has a server profile, mark it complete
+      if (!local.completed && serverLevel) {
+        const next = { ...local, completed: true };
+        saveProfile(next);
+        setProfile(next);
+      }
+    }
+  }, [authProfile]);
 
   const handleOnboardingComplete = (level: OnboardingState['level'], dailyGoal: number) => {
     const next = { level, dailyGoal, completed: true };
@@ -36,6 +59,15 @@ function AppInner() {
   const handleUpdateProfile = (partial: Partial<OnboardingState>) => {
     const next = updateProfile(partial);
     setProfile(next);
+
+    if (user) {
+      const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (partial.level) updateData.level = partial.level;
+      if (partial.dailyGoal) updateData.daily_goal = partial.dailyGoal;
+      supabase.from('profiles').update(updateData).eq('id', user.id).then(({ error }) => {
+        if (error) console.warn('Profile sync error:', error.message);
+      });
+    }
   };
 
   const handleResetOnboarding = () => {
@@ -43,11 +75,6 @@ function AppInner() {
     resetProgress();
     setProfile({ level: null, dailyGoal: 0, completed: false });
     setActiveTab('learn');
-  };
-
-  const handleSkipAuth = () => {
-    localStorage.setItem(AUTH_SKIP_KEY, 'true');
-    setAuthSkipped(true);
   };
 
   // Show nothing while auth is loading
@@ -61,11 +88,11 @@ function AppInner() {
     );
   }
 
-  // Show auth screen if not logged in and not skipped
-  if (!user && !authSkipped) {
+  // Show auth prompt (triggered from profile tab when user is a guest)
+  if (showAuthPrompt && !user) {
     return (
       <PhoneFrame>
-        <AuthScreen onSkip={handleSkipAuth} />
+        <AuthScreen onSkip={() => setShowAuthPrompt(false)} onBack={() => setShowAuthPrompt(false)} />
       </PhoneFrame>
     );
   }
@@ -104,6 +131,7 @@ function AppInner() {
           onUpdateProfile={handleUpdateProfile}
           onResetOnboarding={handleResetOnboarding}
           onOpenSettings={() => setShowSettings(true)}
+          onRequestAuth={() => setShowAuthPrompt(true)}
         />
       )}
       <TabBar active={activeTab} onChange={setActiveTab} />

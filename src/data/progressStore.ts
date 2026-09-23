@@ -645,3 +645,42 @@ export function getProgressSummary(dailyGoal: number): ProgressSummary {
     placement: state.placement,
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Cloud sync — export/import full progress state for cross-device sync
+/* ------------------------------------------------------------------ */
+
+export function exportProgress(): ProgressState {
+  return JSON.parse(JSON.stringify(currentState));
+}
+
+export function importProgress(external: Partial<ProgressState>): void {
+  const incoming: ProgressState = {
+    ...INITIAL_STATE,
+    ...external,
+    lessons: external.lessons ?? {},
+    learnedWordIds: external.learnedWordIds ?? [],
+    words: external.words ?? {},
+    activityLog: external.activityLog ?? {},
+    unlockedAchievements: external.unlockedAchievements ?? [],
+  };
+
+  const merged: ProgressState = {
+    ...currentState,
+    ...incoming,
+    learnedWordIds: Array.from(new Set([...currentState.learnedWordIds, ...incoming.learnedWordIds])),
+    unlockedAchievements: Array.from(new Set([...currentState.unlockedAchievements, ...incoming.unlockedAchievements])),
+    xp: Math.max(currentState.xp, incoming.xp),
+    streak: Math.max(currentState.streak, incoming.streak),
+    bestSessionAccuracy: Math.max(currentState.bestSessionAccuracy, incoming.bestSessionAccuracy),
+    dailyGoalsCompleted: Math.max(currentState.dailyGoalsCompleted, incoming.dailyGoalsCompleted),
+    words: { ...currentState.words, ...incoming.words },
+    lessons: { ...currentState.lessons, ...incoming.lessons },
+    activityLog: { ...currentState.activityLog, ...incoming.activityLog },
+  };
+
+  currentState = merged;
+  save(currentState);
+  notify();
+}
+
