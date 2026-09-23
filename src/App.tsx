@@ -27,28 +27,31 @@ function AppInner() {
   useEffect(() => subscribe(() => setTick((t) => t + 1)), []);
 
   // If user signs in and has a server profile, sync level/dailyGoal to local onboarding
+  const authProfileKey = authProfile ? `${authProfile.id}:${authProfile.level}:${authProfile.dailyGoal}` : '';
   useEffect(() => {
-    if (authProfile && (authProfile.level || authProfile.dailyGoal)) {
-      const local = loadProfile();
-      const serverLevel = authProfile.level as OnboardingState['level'];
-      if (serverLevel && (!local.level || local.level !== serverLevel)) {
-        const next = { ...local, level: serverLevel };
-        saveProfile(next);
-        setProfile(next);
-      }
-      if (authProfile.dailyGoal && local.dailyGoal !== authProfile.dailyGoal) {
-        const next = { ...local, dailyGoal: authProfile.dailyGoal };
-        saveProfile(next);
-        setProfile(next);
-      }
-      // If onboarding wasn't completed locally but user has a server profile, mark it complete
-      if (!local.completed && serverLevel) {
-        const next = { ...local, completed: true };
-        saveProfile(next);
-        setProfile(next);
-      }
+    if (!authProfile || (!authProfile.level && !authProfile.dailyGoal)) return;
+    const local = loadProfile();
+    let changed = false;
+    let next = { ...local };
+    const serverLevel = authProfile.level as OnboardingState['level'];
+    if (serverLevel && (!local.level || local.level !== serverLevel)) {
+      next = { ...next, level: serverLevel };
+      changed = true;
     }
-  }, [authProfile]);
+    if (authProfile.dailyGoal && local.dailyGoal !== authProfile.dailyGoal) {
+      next = { ...next, dailyGoal: authProfile.dailyGoal };
+      changed = true;
+    }
+    if (!local.completed && serverLevel) {
+      next = { ...next, completed: true };
+      changed = true;
+    }
+    if (changed) {
+      saveProfile(next);
+      // Defer setState to avoid cascading renders
+      Promise.resolve().then(() => setProfile(next));
+    }
+  }, [authProfileKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOnboardingComplete = (level: OnboardingState['level'], dailyGoal: number) => {
     const next = { level, dailyGoal, completed: true };
@@ -92,7 +95,7 @@ function AppInner() {
   if (showAuthPrompt && !user) {
     return (
       <PhoneFrame>
-        <AuthScreen onSkip={() => setShowAuthPrompt(false)} onBack={() => setShowAuthPrompt(false)} />
+        <AuthScreen onSkip={() => setShowAuthPrompt(false)} />
       </PhoneFrame>
     );
   }

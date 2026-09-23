@@ -207,7 +207,7 @@ export function ProfileScreen({
   const [sheet, setSheet] = useState<SheetMode>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
-  const { user, profile: authProfile, isGuest, signOut } = useAuth();
+  const { user, profile: authProfile, signOut } = useAuth();
 
   const currentLevel = getLevelByCode(profile.level ?? 'A1');
   const isSignedIn = Boolean(user);

@@ -18,7 +18,6 @@ type Mode = 'welcome' | 'login' | 'signup';
 
 type AuthScreenProps = {
   onSkip: () => void;
-  onBack?: () => void;
 };
 
 function GoogleIcon({ size = 20 }: { size?: number }) {
@@ -44,7 +43,7 @@ function GoogleIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-export function AuthScreen({ onSkip, onBack }: AuthScreenProps) {
+export function AuthScreen({ onSkip }: AuthScreenProps) {
   const { signIn, signUp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<Mode>('welcome');
   const [email, setEmail] = useState('');
