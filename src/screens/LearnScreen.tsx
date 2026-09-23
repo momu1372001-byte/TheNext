@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Flame, ChevronLeft, Lock, Trophy, ArrowLeft, Play, Target, CheckCircle2, Sparkles } from 'lucide-react';
+import { BookOpen, Flame, ChevronLeft, Lock, Trophy, ArrowLeft, Play, Target, CheckCircle2, Sparkles, Star } from 'lucide-react';
 import {
   Screen,
   ScreenHeader,
@@ -36,7 +36,6 @@ type LearnScreenProps = {
 function getLessonStatuses(lessons: Lesson[]): LessonStatus[] {
   return lessons.map((lesson, i) => {
     if (isLessonCompleted(lesson.id)) return 'completed';
-    // First lesson is always active; others are active if the previous is completed
     if (i === 0) return 'active';
     return isLessonCompleted(lessons[i - 1].id) ? 'active' : 'locked';
   });
@@ -51,7 +50,6 @@ export function LearnScreen({ profile }: LearnScreenProps) {
   const level = profile.level ? getLevelByCode(profile.level) : undefined;
   const lessons = profile.level ? getLessonsByLevel(profile.level) : [];
 
-  // Real-time daily progress
   const [dailyProgress, setDailyProgress] = useState(() => getDailySessionProgress());
   const [sessionDone, setSessionDone] = useState(() => isDailySessionDone());
 
@@ -71,6 +69,8 @@ export function LearnScreen({ profile }: LearnScreenProps) {
   const statuses = getLessonStatuses(lessons);
   const completedCount = statuses.filter((s) => s === 'completed').length;
   const overallProgress = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
+  const totalStars = completedCount * 3;
+  const maxStars = lessons.length * 3;
 
   // --- Daily session mode ---
   if (inDailySession && profile.level) {
@@ -109,7 +109,7 @@ export function LearnScreen({ profile }: LearnScreenProps) {
         <div className="flex items-center gap-3 px-5 pt-6 pb-3 shrink-0">
           <button
             onClick={() => setOpenLessonId(null)}
-            className="flex h-9 w-9 items-center justify-center rounded-pill bg-white/5 text-text-secondary hover:text-text-primary"
+            className="flex h-9 w-9 items-center justify-center rounded-pill bg-white/5 text-text-secondary hover:text-text-primary transition-colors"
             aria-label="رجوع"
           >
             <ChevronLeft size={18} className="rotate-180" />
@@ -135,7 +135,6 @@ export function LearnScreen({ profile }: LearnScreenProps) {
           </div>
         </div>
 
-        {/* Start practice button */}
         <div className="px-5 pb-4">
           <Button
             fullWidth
@@ -147,7 +146,6 @@ export function LearnScreen({ profile }: LearnScreenProps) {
           </Button>
         </div>
 
-        {/* Word list */}
         <div className="flex flex-col gap-3 px-5 pb-8">
           {lessonWords.map((w, i) => {
             const status = getWordStatus(w.id);
@@ -186,27 +184,32 @@ export function LearnScreen({ profile }: LearnScreenProps) {
           </Card>
         </div>
       ) : (
-        <div className="flex flex-col gap-4 px-5 pb-8">
+        <div className="flex flex-col px-5 pb-8">
           {/* Daily goal hero card */}
-          <Card raised className="p-5 animate-fade-up">
-            <div className="flex items-center justify-between mb-3">
+          <Card raised className="p-5 animate-fade-up overflow-hidden relative">
+            {/* Decorative glow */}
+            <div className="absolute -top-12 -left-12 h-32 w-32 rounded-full bg-primary-500/10 blur-2xl" aria-hidden />
+
+            <div className="relative flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Target size={18} className="text-primary-500" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-500/15 text-primary-500">
+                  <Target size={18} />
+                </div>
                 <span className="text-sm font-semibold text-text-primary">هدف اليوم</span>
               </div>
-              <span className="text-sm text-text-secondary ltr tabular-nums">
+              <span className="text-sm font-bold text-text-secondary ltr tabular-nums">
                 {learnedToday}/{dailyGoal}
               </span>
             </div>
             <ProgressBar value={learnedToday} max={dailyGoal} height={10} />
-            <div className="flex items-center justify-between mt-3">
+            <div className="relative flex items-center justify-between mt-3">
               <span className="text-2xs text-text-muted ltr tabular-nums">
                 {goalPct >= 100 ? 'تم تحقيق الهدف!' : `${dailyGoal - learnedToday} كلمات متبقّية`}
               </span>
-              <span className="text-2xs text-text-muted ltr">{goalPct}%</span>
+              <span className="text-2xs font-semibold text-primary-500 ltr">{goalPct}%</span>
             </div>
             {goalComplete ? (
-              <div className="mt-4 flex items-center gap-2 rounded-lg bg-success-500/10 border border-success-500/30 px-4 py-3 animate-fade-up">
+              <div className="relative mt-4 flex items-center gap-2 rounded-lg bg-success-500/10 border border-success-500/30 px-4 py-3 animate-fade-up">
                 <CheckCircle2 size={18} className="text-success-400 shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-success-400">أحسنت! أكملت جلسة اليوم</p>
@@ -227,31 +230,32 @@ export function LearnScreen({ profile }: LearnScreenProps) {
             )}
           </Card>
 
-          {/* Unit progress banner */}
-          <Card raised className="p-5 animate-fade-up">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Trophy size={18} className="text-primary-500" />
-                <span className="text-sm font-semibold text-text-primary">تقدّم الوحدة</span>
+          {/* Unit progress summary */}
+          <div className="flex items-center gap-3 mt-4 mb-3 animate-fade-up" style={{ animationDelay: '60ms' }}>
+            <div className="flex items-center gap-2 flex-1">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-500/15 text-primary-500 shrink-0">
+                <Trophy size={18} />
               </div>
-              <span className="text-sm text-text-secondary ltr">{overallProgress}%</span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-text-primary">تقدّم الوحدة</p>
+                <p className="text-2xs text-text-muted">{completedCount} من {lessons.length} دروس</p>
+              </div>
             </div>
-            <ProgressBar value={completedCount} max={lessons.length} />
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-2xs text-text-muted">
-                {completedCount} من {lessons.length} دروس مكتملة
-              </span>
+            <div className="flex items-center gap-1.5">
+              <Star size={14} className="text-primary-500" fill="currentColor" />
+              <span className="text-sm font-bold text-text-primary ltr tabular-nums">{totalStars}/{maxStars}</span>
             </div>
-          </Card>
+            <span className="text-sm font-bold text-primary-500 ltr">{overallProgress}%</span>
+          </div>
 
           {/* Section label */}
-          <div className="flex items-center gap-2 px-1">
+          <div className="flex items-center gap-2 px-1 mt-2 mb-3">
             <span className="text-2xs font-semibold text-text-muted">مسار التعلّم</span>
             <div className="h-px flex-1 bg-border/40" />
           </div>
 
-          {/* Vertical path */}
-          <div className="flex flex-col">
+          {/* Vertical zigzag path */}
+          <div className="flex flex-col gap-0">
             {lessons.map((lesson, i) => {
               const category = getCategoryById(lesson.category);
               const status = statuses[i];
@@ -281,7 +285,7 @@ export function LearnScreen({ profile }: LearnScreenProps) {
           </div>
 
           {/* Locked next-unit teaser */}
-          <div className="flex items-center justify-center gap-2 text-2xs text-text-muted pt-2">
+          <div className="flex items-center justify-center gap-2 text-2xs text-text-muted pt-4 pb-2">
             <Lock size={12} />
             <span>وحدات أكثر قادمة بعد إكمال هذه الدروس</span>
           </div>
