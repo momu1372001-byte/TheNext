@@ -15,7 +15,6 @@ import {
   Target,
   Settings,
   X,
-  Award,
   Lock,
 } from 'lucide-react';
 import { Screen, ScreenHeader, Card, Button } from '@/components/ui';
@@ -40,7 +39,6 @@ function useSummary(dailyGoal: number) {
   const [summary, setSummary] = useState<ProgressSummary>(() => getProgressSummary(dailyGoal));
 
   useEffect(() => {
-    setSummary(getProgressSummary(dailyGoal));
     return subscribe(() => setSummary(getProgressSummary(dailyGoal)));
   }, [dailyGoal]);
 

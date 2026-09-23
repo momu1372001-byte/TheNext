@@ -13,7 +13,6 @@ function useSummary(dailyGoal: number) {
   const [summary, setSummary] = useState<ProgressSummary>(() => getProgressSummary(dailyGoal));
 
   useEffect(() => {
-    setSummary(getProgressSummary(dailyGoal));
     return subscribe(() => setSummary(getProgressSummary(dailyGoal)));
   }, [dailyGoal]);
 
@@ -131,8 +130,6 @@ export function ProgressScreen({ profile }: ProgressScreenProps) {
   const [weakWords, setWeakWords] = useState<Word[]>(() => getWeakWords(5));
 
   useEffect(() => {
-    setSkillsAnalysis(getStrengthsAndWeaknesses());
-    setWeakWords(getWeakWords(5));
     return subscribe(() => {
       setSkillsAnalysis(getStrengthsAndWeaknesses());
       setWeakWords(getWeakWords(5));

@@ -136,12 +136,7 @@ export function recordWordAnswer(wordId: string, correct: boolean): void {
   const existing = currentState.words[wordId];
   const correctCount = (existing?.correctCount ?? 0) + (correct ? 1 : 0);
   const wrongCount = (existing?.wrongCount ?? 0) + (correct ? 0 : 1);
-  let status: WordStatus = 'learning';
-  if (correctCount >= 2) {
-    status = 'reviewed';
-  } else {
-    status = 'learning';
-  }
+  const status: WordStatus = correctCount >= 2 ? 'reviewed' : 'learning';
 
   currentState = {
     ...currentState,

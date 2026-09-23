@@ -30,7 +30,6 @@ export function LessonPathNode({
   isLast,
   onTap,
 }: LessonPathNodeProps) {
-  const side = index % 2 === 0 ? 'right' : 'left';
 
   const nodeStyles: Record<LessonStatus, string> = {
     completed:

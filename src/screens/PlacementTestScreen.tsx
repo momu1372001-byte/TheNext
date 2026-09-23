@@ -1,10 +1,10 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { ChevronLeft, Check, X, GraduationCap, Trophy, RotateCcw } from 'lucide-react';
 import { Screen, ProgressBar, Button, Card } from '@/components/ui';
 import { getAllWords, getAllLevels } from '@/data/vocabularyRepository';
 import { savePlacementResult } from '@/data/progressStore';
 import { buildExercisesForWords, type Exercise } from '@/components/ui';
-import type { LevelCode, Word, Level } from '@/types';
+import type { LevelCode } from '@/types';
 
 type PlacementTestScreenProps = {
   onComplete: (recommendedLevel: LevelCode, score: number) => void;

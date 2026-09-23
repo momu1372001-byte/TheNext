@@ -15,7 +15,7 @@ export default function App() {
   const [profile, setProfile] = useState<OnboardingState>(() => loadProfile());
   const [activeTab, setActiveTab] = useState<TabKey>('learn');
   const [showSettings, setShowSettings] = useState(false);
-  const { settings } = useSettings();
+  useSettings();
 
   // Re-render on progress store changes (streak/XP updates, etc.)
   const [, setTick] = useState(0);

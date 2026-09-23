@@ -54,8 +54,6 @@ export function LearnScreen({ profile }: LearnScreenProps) {
   const [sessionDone, setSessionDone] = useState(() => isDailySessionDone());
 
   useEffect(() => {
-    setDailyProgress(getDailySessionProgress());
-    setSessionDone(isDailySessionDone());
     return subscribe(() => {
       setDailyProgress(getDailySessionProgress());
       setSessionDone(isDailySessionDone());
